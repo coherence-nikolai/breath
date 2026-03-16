@@ -445,17 +445,16 @@ function drawPractice(ts){
       X.closePath();
       X.strokeStyle='rgba('+rgb+','+(0.55-bi*.12)+')';X.lineWidth=2.5-bi*.55;X.stroke();
     }
-    // Highlight active side based on phase
-    var sideColors=['rgba('+rgb+',.80)','rgba('+rgb+',.80)','rgba('+rgb+',.80)','rgba('+rgb+',.80)'];
-    var activePhaseT=phaseIdx%4;
+    // Highlight ONE active side per phase: 0=top(inhale), 1=right(hold), 2=bottom(exhale), 3=left(hold)
     var sq2=sqR;var rad2=sq2*.18;
-    X.save();X.lineWidth=3.5;X.strokeStyle=sideColors[activePhaseT];X.setLineDash([sq2*.3,sq2*1.4]);
-    X.beginPath();X.moveTo(cx-sq2+rad2,cy-sq2);
-    X.lineTo(cx+sq2-rad2,cy-sq2);X.arcTo(cx+sq2,cy-sq2,cx+sq2,cy-sq2+rad2,rad2);
-    X.lineTo(cx+sq2,cy+sq2-rad2);X.arcTo(cx+sq2,cy+sq2,cx+sq2-rad2,cy+sq2,rad2);
-    X.lineTo(cx-sq2+rad2,cy+sq2);X.arcTo(cx-sq2,cy+sq2,cx-sq2,cy+sq2-rad2,rad2);
-    X.lineTo(cx-sq2,cy-sq2+rad2);X.arcTo(cx-sq2,cy-sq2,cx-sq2+rad2,cy-sq2,rad2);
-    X.closePath();X.stroke();X.setLineDash([]);X.restore();
+    var ap=phaseIdx%4;
+    X.save();X.lineWidth=4;X.strokeStyle='rgba('+rgb+',.90)';X.lineCap='round';
+    X.beginPath();
+    if(ap===0){X.moveTo(cx-sq2+rad2,cy-sq2);X.lineTo(cx+sq2-rad2,cy-sq2);}
+    else if(ap===1){X.moveTo(cx+sq2,cy-sq2+rad2);X.lineTo(cx+sq2,cy+sq2-rad2);}
+    else if(ap===2){X.moveTo(cx+sq2-rad2,cy+sq2);X.lineTo(cx-sq2+rad2,cy+sq2);}
+    else{X.moveTo(cx-sq2,cy+sq2-rad2);X.lineTo(cx-sq2,cy-sq2+rad2);}
+    X.stroke();X.restore();
     crystalV=Math.max(0,crystalV-.04);
 
   } else if(curP===PATTERNS.coherent){
@@ -524,8 +523,8 @@ function cycleStep(ts){
   if(!phaseStart)phaseStart=ts;
   var p=curP.phases[phaseIdx];
   var elapsed=(ts-phaseStart)/1000;
-  // Play sound at start of each phase
-  if(elapsed<.05)playPhaseSound(p.t,curKey);
+  // Play sound once at start of each phase
+  if(elapsed<.08&&!phaseSoundPlayed){phaseSoundPlayed=true;playPhaseSound(p.t,curKey);}
   var rem=Math.max(1,Math.ceil(p.d-elapsed));
   var isHold=p.t==='hold'||p.t==='hold2';
   var L=lang;
@@ -559,11 +558,11 @@ function cycleStep(ts){
   });
 
   if(elapsed>=p.d||skipFlag){
-    skipFlag=false;phaseStart=ts;phaseIdx++;
+    skipFlag=false;phaseStart=ts;phaseIdx++;phaseSoundPlayed=false;
     if(phaseIdx>=curP.phases.length){
       phaseIdx=0;cycleCount++;
       if(cycleCount>=curP.cycles){completePractice();return;}
-      touchRipples.push({r:.1,a:.6});
+      touchRipples.push({r:.1,a:.6});phaseSoundPlayed=false;
     }
   }
   if(breathActive)requestAnimationFrame(cycleStep);
@@ -613,7 +612,7 @@ function startPattern(key){
   ca.style.borderColor=curP.hex;ca.style.color=curP.hex;ca.style.background='rgba('+curP.rgb+',.12)';
 
   orbR=0.15;orbTarget=0.5;phaseIdx=0;cycleCount=0;phaseStart=null;
-  skipFlag=false;lightAngle=0;sineT=0;shockA=0;crystalV=0;sparks=[];touchRipples=[];
+  skipFlag=false;phaseSoundPlayed=false;lightAngle=0;sineT=0;shockA=0;crystalV=0;sparks=[];touchRipples=[];
 
   showScreen('s-practice');
   startPatternAudio(key);
@@ -667,6 +666,7 @@ function resizeIntro(){var d=devicePixelRatio||1;introW=innerWidth;introH=innerH
 window.addEventListener('resize',resizeIntro);resizeIntro();
 
 var iPhase='in',iT=0,iAlpha=1,iDone=false;
+var phaseSoundPlayed=false;
 var iPs=[];
 var I_COUNT=120;
 
@@ -758,7 +758,14 @@ function toggleSound(){
   document.getElementById('soundBtn').textContent=soundOn?'🔊':'🔇';
   if(soundOn){
     initAudio();
-    if(audioCtx.state==='suspended')audioCtx.resume();
+    // iOS unlock: play a silent buffer
+    var buf=audioCtx.createBuffer(1,1,22050);
+    var src=audioCtx.createBufferSource();src.buffer=buf;
+    src.connect(audioCtx.destination);src.start(0);
+    audioCtx.resume().then(function(){
+      // If a pattern is running, start its drone
+      if(breathActive&&curKey)startPatternAudio(curKey);
+    });
   } else {
     stopDrone();
   }
