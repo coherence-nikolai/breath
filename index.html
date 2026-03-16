@@ -114,6 +114,7 @@
 <body>
 
 <canvas id="mainCanvas"></canvas>
+<canvas id="introCanvas" style="position:fixed;inset:0;width:100%;height:100%;z-index:200;pointer-events:none"></canvas>
 
 <button id="topBack" onclick="goBack()">←</button>
 <div id="topRight">
@@ -122,7 +123,7 @@
 </div>
 
 <!-- HOME -->
-<div class="screen active" id="s-home">
+<div class="screen" id="s-home">
   <div class="home-wordmark" id="hwm">Breath</div>
   <div class="home-sub" id="hsub">ancient practice · modern science</div>
   <div class="home-btns">
@@ -157,7 +158,7 @@
     <div class="browse-label" id="bl0">Ancient tradition</div>
     <div class="pattern-card" onclick="startPattern('anapana')"><div class="pattern-dot" style="background:#8abfb8"></div><div><div class="pattern-card-name" id="pn-anapana">Anapana</div><div class="pattern-card-desc" id="pd-anapana">pure breath observation · 2500 years old</div></div><div class="pattern-card-arrow">→</div></div>
     <div class="browse-label" id="bl1">Calming &amp; anxiety</div>
-    <div class="pattern-card" onclick="startPattern('physiological')"><div class="pattern-dot" style="background:#a78bfa"></div><div><div class="pattern-card-name" id="pn-physiological">Physiological Sigh</div><div class="pattern-card-desc" id="pd-physiological">fastest stress relief · Stanford research</div></div><div class="pattern-card-arrow">→</div></div>
+    <div class="pattern-card" onclick="startPattern('physiological')"><div class="pattern-dot" style="background:#f4a261"></div><div><div class="pattern-card-name" id="pn-physiological">Physiological Sigh</div><div class="pattern-card-desc" id="pd-physiological">fastest stress relief · Stanford research</div></div><div class="pattern-card-arrow">→</div></div>
     <div class="pattern-card" onclick="startPattern('extended')"><div class="pattern-dot" style="background:#5ab5d4"></div><div><div class="pattern-card-name" id="pn-extended">Extended Exhale</div><div class="pattern-card-desc" id="pd-extended">4 in · 6 out · vagal activation</div></div><div class="pattern-card-arrow">→</div></div>
     <div class="pattern-card" onclick="startPattern('478')"><div class="pattern-dot" style="background:#b39ddb"></div><div><div class="pattern-card-name" id="pn-478">4-7-8</div><div class="pattern-card-desc" id="pd-478">deep calm · sleep onset</div></div><div class="pattern-card-arrow">→</div></div>
     <div class="browse-label" id="bl2">Balance &amp; focus</div>
@@ -277,7 +278,7 @@ var PATTERNS={
       tradition:'Anapana (Pali: ānāpānasati) está descrito en el Ānāpānasati Sutta (MN 118), uno de los discursos de meditación más detallados del Canon Pali. El Buda lo enseñó en Savatthi, describiendo dieciséis pasos de observación. La práctica tiene al menos 2.500 años. Comienza simple: siéntate, y sabe que estás respirando. Sabe que estás soltando el aire.',
       complete:{icon:'🌿',title:'Presente.',sub:'La respiración siempre estuvo aquí. Solo la notaste.'},
       phaseLabel:'observa'}},
-  physiological:{hex:'#a78bfa',rgb:'167,139,250',
+  physiological:{hex:'#f4a261',rgb:'244,162,97',
     phases:[{en:'inhale',es:'inhala',d:2,t:'in'},{en:'inhale again',es:'inhala de nuevo',d:1.5,t:'in2'},{en:'exhale',es:'exhala',d:6,t:'out'}],cycles:5,
     en:{name:'Physiological Sigh',rhythm:'double inhale · long exhale',science:'Researchers at Stanford (Huberman, Spiegel et al., 2023) found the physiological sigh is the fastest known method to reduce acute stress. A double inhale re-inflates collapsed alveoli, and the extended exhale activates the parasympathetic nervous system via the vagus nerve. Even one cycle measurably reduces heart rate and cortisol.',nd:'Particularly useful for ND brains experiencing emotional flooding or sensory overload. Works in seconds, can be done anywhere without anyone noticing. One breath is genuinely enough.',complete:{icon:'💜',title:'Recalibrated.',sub:'Your nervous system just reset.'}},
     es:{name:'Suspiro Fisiológico',rhythm:'doble inhalación · exhalación larga',science:'Investigadores de Stanford (Huberman, Spiegel et al., 2023) encontraron que el suspiro fisiológico es el método más rápido para reducir el estrés agudo. Una doble inhalación re-infla los alvéolos colapsados, y la exhalación larga activa el nervio vago. Incluso un ciclo reduce el cortisol.',nd:'Especialmente útil para cerebros ND con desbordamiento emocional o sobrecarga sensorial. Funciona en segundos. Una sola respiración es suficiente.',complete:{icon:'💜',title:'Recalibrado.',sub:'Tu sistema nervioso acaba de reiniciarse.'}}},
@@ -390,6 +391,22 @@ function drawPractice(ts){
     var lg=X.createRadialGradient(lx,ly,0,lx,ly,W*.4);
     lg.addColorStop(0,'rgba('+rgb+',.06)');lg.addColorStop(1,'rgba('+rgb+',0)');
     X.fillStyle=lg;X.fillRect(0,0,W,H);
+    // Aurora shimmer — slow horizontal bands
+    for(var ai=0;ai<3;ai++){
+      var ay=cy+Math.sin(sineT*.3+ai*2.1)*H*.28+ai*H*.12-H*.18;
+      var aw=W*(0.5+Math.sin(sineT*.2+ai)*0.25);
+      var aAlpha=Math.sin(sineT*.4+ai*1.7)*.035+.025;
+      if(aAlpha<.005)continue;
+      var ag=X.createLinearGradient(cx-aw,ay,cx+aw,ay);
+      ag.addColorStop(0,'rgba('+rgb+',0)');
+      ag.addColorStop(.3,'rgba('+rgb+','+aAlpha+')');
+      ag.addColorStop(.5,'rgba(170,220,210,'+aAlpha*.8+')');
+      ag.addColorStop(.7,'rgba('+rgb+','+aAlpha+')');
+      ag.addColorStop(1,'rgba('+rgb+',0)');
+      X.fillStyle=ag;
+      var bandH=H*.06+Math.sin(sineT*.5+ai)*H*.03;
+      X.fillRect(cx-aw,ay-bandH*.5,aw*2,bandH);
+    }
 
   } else if(curP===PATTERNS.fire){
     // ── FIRE — full screen pulses ──
@@ -411,21 +428,34 @@ function drawPractice(ts){
     });
 
   } else if(curP===PATTERNS.box){
-    // ── BOX — geometric precision ──
-    var bg=X.createRadialGradient(cx,cy,0,cx,cy,r*1.6);
-    bg.addColorStop(0,'rgba('+rgb+','+(0.28*orbR)+')');bg.addColorStop(1,'rgba('+rgb+',0)');
-    X.fillStyle=bg;X.fillRect(0,0,W,H);
+    // ── BOX — square orb ──
+    var sqR=r*orbR*1.1;
+    var sqBg=X.createRadialGradient(cx,cy,0,cx,cy,sqR*1.8);
+    sqBg.addColorStop(0,'rgba('+rgb+','+(0.30*orbR)+')');sqBg.addColorStop(1,'rgba('+rgb+',0)');
+    X.fillStyle=sqBg;X.fillRect(0,0,W,H);
+    // Draw squares with rounded corners
     for(var bi=0;bi<4;bi++){
-      X.beginPath();X.arc(cx,cy,r*(1+bi*.22),0,Math.PI*2);
+      var sq=sqR*(1+bi*.22);var rad=sq*.18;
+      X.beginPath();X.moveTo(cx-sq+rad,cy-sq);
+      X.lineTo(cx+sq-rad,cy-sq);X.arcTo(cx+sq,cy-sq,cx+sq,cy-sq+rad,rad);
+      X.lineTo(cx+sq,cy+sq-rad);X.arcTo(cx+sq,cy+sq,cx+sq-rad,cy+sq,rad);
+      X.lineTo(cx-sq+rad,cy+sq);X.arcTo(cx-sq,cy+sq,cx-sq,cy+sq-rad,rad);
+      X.lineTo(cx-sq,cy-sq+rad);X.arcTo(cx-sq,cy-sq,cx-sq+rad,cy-sq,rad);
+      X.closePath();
       X.strokeStyle='rgba('+rgb+','+(0.55-bi*.12)+')';X.lineWidth=2.5-bi*.55;X.stroke();
     }
+    // Highlight active side based on phase
+    var sideColors=['rgba('+rgb+',.80)','rgba('+rgb+',.80)','rgba('+rgb+',.80)','rgba('+rgb+',.80)'];
+    var activePhaseT=phaseIdx%4;
+    var sq2=sqR;var rad2=sq2*.18;
+    X.save();X.lineWidth=3.5;X.strokeStyle=sideColors[activePhaseT];X.setLineDash([sq2*.3,sq2*1.4]);
+    X.beginPath();X.moveTo(cx-sq2+rad2,cy-sq2);
+    X.lineTo(cx+sq2-rad2,cy-sq2);X.arcTo(cx+sq2,cy-sq2,cx+sq2,cy-sq2+rad2,rad2);
+    X.lineTo(cx+sq2,cy+sq2-rad2);X.arcTo(cx+sq2,cy+sq2,cx+sq2-rad2,cy+sq2,rad2);
+    X.lineTo(cx-sq2+rad2,cy+sq2);X.arcTo(cx-sq2,cy+sq2,cx-sq2,cy+sq2-rad2,rad2);
+    X.lineTo(cx-sq2,cy-sq2+rad2);X.arcTo(cx-sq2,cy-sq2,cx-sq2+rad2,cy-sq2,rad2);
+    X.closePath();X.stroke();X.setLineDash([]);X.restore();
     crystalV=Math.max(0,crystalV-.04);
-    if(crystalV>.1){
-      X.save();X.globalAlpha=crystalV*.45;X.strokeStyle='rgba('+rgb+',1)';X.lineWidth=.6;
-      for(var gi=-4;gi<=4;gi++){var gx=cx+gi*(r/3.5);X.beginPath();X.moveTo(gx,cy-r*1.2);X.lineTo(gx,cy+r*1.2);X.stroke();}
-      for(var gj=-4;gj<=4;gj++){var gy=cy+gj*(r/3.5);X.beginPath();X.moveTo(cx-r*1.2,gy);X.lineTo(cx+r*1.2,gy);X.stroke();}
-      X.restore();
-    }
 
   } else if(curP===PATTERNS.coherent){
     // ── COHERENT — sine tide ──
@@ -510,7 +540,11 @@ function cycleStep(ts){
   else orbTarget=phaseIdx>0?0.88:0.15;
 
   // Specials
-  if(curP===PATTERNS.physiological&&p.t==='in2'&&elapsed<.2){shockR=0;shockA=.75;}
+  if(curP===PATTERNS.physiological&&p.t==='in2'){
+    // Double inhale — push orb further out
+    orbTarget=Math.min(0.98,orbTarget+.06);
+    if(elapsed<.2){shockR=0;shockA=.75;}
+  }
   if(curP===PATTERNS.box&&isHold){crystalV=Math.min(1,crystalV+.04);}
   if(curP===PATTERNS['478']&&isHold){crystalV=Math.min(1,crystalV+.025);}
   if(curP===PATTERNS.fire&&Math.random()<.35){sparks.push({ang:Math.random()*Math.PI*2,r:.88,spd:Math.random()*.028+.018,a:.9});}
@@ -620,6 +654,125 @@ function repeatPattern(){if(curKey)startPattern(curKey);}
 
 // Touch on practice screen
 document.getElementById('s-practice').addEventListener('click',function(){touchRipples.push({r:.05,a:.65});});
+
+// ── INTRO ANIMATION ──
+var introC=document.getElementById('introCanvas'),introX=introC.getContext('2d');
+var introW,introH;
+function resizeIntro(){var d=devicePixelRatio||1;introW=innerWidth;introH=innerHeight;introC.width=introW*d;introC.height=introH*d;introC.style.width=introW+'px';introC.style.height=introH+'px';introX.setTransform(1,0,0,1,0,0);introX.scale(d,d);}
+window.addEventListener('resize',resizeIntro);resizeIntro();
+
+var introPhase='in'; // 'in','out','fade'
+var introT=0;
+var introParticles=[];
+var introAlpha=1;
+var introDone=false;
+
+function initIntroParticles(dir){
+  introParticles=[];
+  var cx=introW/2,cy=introH/2;
+  var noseX=cx,noseY=cy-introH*.04;
+  for(var i=0;i<28;i++){
+    var side=i%2===0?-1:1;
+    var nostrilX=noseX+side*introW*.018;
+    var nostrilY=noseY+introH*.04;
+    introParticles.push({
+      x:nostrilX+(Math.random()-.5)*introW*.012,
+      y:nostrilY,
+      vx:side*(Math.random()*.004+.002),
+      vy:dir==='in'?-(Math.random()*.008+.004):(Math.random()*.008+.004),
+      life:Math.random()*.5,
+      maxLife:Math.random()*.6+.4,
+      r:Math.random()*2+1,
+      a:Math.random()*.5+.3
+    });
+  }
+}
+initIntroParticles('in');
+
+function runIntro(){
+  if(introDone)return;
+  requestAnimationFrame(runIntro);
+  introX.clearRect(0,0,introW,introH);
+  introT+=.016;
+
+  var cx=introW/2,cy=introH*.5;
+
+  if(introPhase==='fade'){
+    introAlpha=Math.max(0,introAlpha-.018);
+    introX.globalAlpha=introAlpha;
+    if(introAlpha<=0){
+      introDone=true;introC.style.display='none';
+      document.getElementById('s-home').classList.add('active');
+      return;
+    }
+  }
+
+  introX.globalAlpha=introPhase==='fade'?introAlpha:1;
+
+  // Nose shape — simple elegant line art
+  var nw=introW*.06,nh=introH*.08;
+  var nx=cx,ny=cy-introH*.02;
+  introX.save();
+  introX.strokeStyle='rgba(240,238,232,'+(introPhase==='fade'?introAlpha*.55:.55)+')';
+  introX.lineWidth=1.5;
+  introX.lineCap='round';
+  introX.lineJoin='round';
+  // Nose bridge
+  introX.beginPath();
+  introX.moveTo(nx-nw*.3,ny-nh*.9);
+  introX.bezierCurveTo(nx-nw*.25,ny-nh*.2,nx-nw*.55,ny+nh*.1,nx-nw*.5,ny+nh*.5);
+  introX.bezierCurveTo(nx-nw*.45,ny+nh*.8,nx-nw*.15,ny+nh,nx,ny+nh);
+  introX.bezierCurveTo(nx+nw*.15,ny+nh,nx+nw*.45,ny+nh*.8,nx+nw*.5,ny+nh*.5);
+  introX.bezierCurveTo(nx+nw*.55,ny+nh*.1,nx+nw*.25,ny-nh*.2,nx+nw*.3,ny-nh*.9);
+  introX.stroke();
+  // Nostril hints
+  introX.beginPath();
+  introX.arc(nx-nw*.38,ny+nh*.72,nw*.18,0,Math.PI*2);
+  introX.stroke();
+  introX.beginPath();
+  introX.arc(nx+nw*.38,ny+nh*.72,nw*.18,0,Math.PI*2);
+  introX.stroke();
+  introX.restore();
+
+  // Breath particles
+  var allDead=true;
+  introParticles.forEach(function(p){
+    p.life+=.018;
+    if(p.life<p.maxLife){
+      allDead=false;
+      var fade=Math.sin((p.life/p.maxLife)*Math.PI);
+      p.x+=p.vx*introW;p.y+=p.vy*introH;
+      introX.beginPath();introX.arc(p.x,p.y,p.r,0,Math.PI*2);
+      introX.fillStyle='rgba(240,238,232,'+(fade*p.a*(introPhase==='fade'?introAlpha:.85))+')';
+      introX.fill();
+    }
+  });
+
+  // Breath lines — flowing curves
+  var lineCount=6;
+  for(var li=0;li<lineCount;li++){
+    var side2=li%2===0?-1:1;
+    var nostX=cx+side2*introW*.018;
+    var nostY=cy+introH*.06;
+    var prog=(introT*.4+li*.18)%1;
+    var lineA=Math.sin(prog*Math.PI)*.55;
+    if(lineA<.02)continue;
+    var endY=introPhase==='in'?nostY-introH*(prog*.22+.04):nostY+introH*(prog*.18+.04);
+    var endX=nostX+side2*introW*prog*.04;
+    var g=introX.createLinearGradient(nostX,nostY,endX,endY);
+    g.addColorStop(0,'rgba(240,238,232,0)');
+    g.addColorStop(.3,'rgba(240,238,232,'+(lineA*(introPhase==='fade'?introAlpha:1))+')');
+    g.addColorStop(1,'rgba(240,238,232,0)');
+    introX.beginPath();introX.moveTo(nostX,nostY);
+    introX.bezierCurveTo(nostX+side2*introW*.01,nostY+(endY-nostY)*.4,endX-side2*introW*.008,(endY+nostY)/2,endX,endY);
+    introX.strokeStyle=g;introX.lineWidth=1.2;introX.stroke();
+  }
+
+  // Phase logic
+  if(introT>2.2&&introPhase==='in'){introPhase='out';introT=0;initIntroParticles('out');}
+  if(introT>2.0&&introPhase==='out'){introPhase='fade';}
+}
+runIntro();
 
 // ── LANGUAGE ──
 var lang='en';
