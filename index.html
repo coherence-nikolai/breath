@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>Breath</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;600&family=Syne:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0d0d12;--text:#f0eee8;--dim:rgba(240,238,232,.48);
+      --border:rgba(255,255,255,.09);--surface:rgba(255,255,255,.05);
+      --serif:'Outfit',system-ui,sans-serif;
+      --sans:'Syne',system-ui,sans-serif;
+    }
+    [data-theme="light"]{
+      --bg:#f5f0e8;--text:#1a1a2a;--dim:rgba(26,26,42,.48);
+      --border:rgba(0,0,0,.09);--surface:rgba(0,0,0,.04);
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text);
+      font-family:var(--serif);overflow:hidden;-webkit-font-smoothing:antialiased;
+      transition:background .4s,color .4s}
+    #rippleCanvas{position:fixed;inset:0;pointer-events:none;z-index:0}
+    .screen{position:fixed;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      padding:max(env(safe-area-inset-top),20px) 28px max(env(safe-area-inset-bottom),20px);
+      opacity:0;pointer-events:none;transition:opacity .4s ease;z-index:10;overflow-y:auto}
+    .screen.active{opacity:1;pointer-events:all}
+
+    /* CHROME */
+    #chrome{position:fixed;top:0;left:0;right:0;
+      padding:max(env(safe-area-inset-top),16px) 20px 10px;
+      display:none;align-items:center;justify-content:space-between;z-index:100}
+    .back-btn{background:none;border:none;cursor:pointer;
+      color:var(--dim);font-size:24px;padding:8px;
+      font-family:var(--serif);-webkit-tap-highlight-color:transparent}
+    .theme-btn{background:none;border:none;cursor:pointer;
+      color:var(--dim);font-size:18px;padding:8px;
+      -webkit-tap-highlight-color:transparent}
+
+    /* HOME */
+    #s-home{gap:0;justify-content:center}
+    .home-wordmark{font-family:var(--sans);font-weight:600;
+      font-size:clamp(52px,15vw,80px);letter-spacing:.12em;text-transform:uppercase;
+      text-align:center;margin-bottom:10px;
+      animation:glow 6s ease-in-out infinite}
+    @keyframes glow{0%,100%{text-shadow:0 0 40px rgba(240,238,232,.10)}
+      50%{text-shadow:0 0 80px rgba(240,238,232,.28)}}
+    [data-theme="light"] .home-wordmark{animation:glowL 6s ease-in-out infinite}
+    @keyframes glowL{0%,100%{text-shadow:0 0 40px rgba(26,26,42,.08)}
+      50%{text-shadow:0 0 60px rgba(26,26,42,.18)}}
+    .home-sub{font-size:clamp(14px,3.5vw,18px);font-weight:300;
+      color:var(--dim);text-align:center;letter-spacing:.10em;
+      margin-bottom:52px;max-width:300px;line-height:1.6}
+    .home-btns{display:flex;flex-direction:column;gap:14px;width:100%;max-width:340px}
+    .home-btn{padding:20px 24px;border-radius:16px;
+      border:1.5px solid var(--border);background:var(--surface);
+      font-family:var(--serif);font-size:clamp(18px,4.5vw,22px);font-weight:400;
+      color:var(--text);cursor:pointer;text-align:left;
+      -webkit-tap-highlight-color:transparent;
+      display:flex;align-items:center;gap:16px;
+      transition:border-color .2s,background .2s}
+    .home-btn:active{background:rgba(255,255,255,.08)}
+    .home-btn-icon{font-size:24px;flex-shrink:0}
+    .home-btn-text{display:flex;flex-direction:column;gap:3px}
+    .home-btn-label{font-size:clamp(18px,4.5vw,22px);font-weight:400}
+    .home-btn-hint{font-size:clamp(12px,3vw,14px);color:var(--dim);font-weight:300}
+
+    /* STATE PICKER */
+    #s-state{gap:20px;padding-top:60px}
+    .state-title{font-size:clamp(24px,6vw,32px);font-weight:600;
+      text-align:center;line-height:1.35;max-width:320px}
+    .state-grid{display:flex;flex-direction:column;gap:11px;width:100%;max-width:380px}
+    .state-btn{padding:18px 20px;border-radius:16px;
+      border:1.5px solid var(--border);background:var(--surface);
+      font-family:var(--serif);font-size:clamp(17px,4.2vw,20px);font-weight:400;
+      color:var(--text);cursor:pointer;text-align:left;
+      -webkit-tap-highlight-color:transparent;
+      display:flex;align-items:center;gap:14px;line-height:1.4;
+      transition:border-color .2s,background .2s}
+    .state-btn:active{background:rgba(255,255,255,.06)}
+    .state-icon{font-size:22px;flex-shrink:0}
+
+    /* BROWSE */
+    #s-browse{justify-content:flex-start;padding-top:70px;overflow-y:auto}
+    .browse-inner{width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+    .browse-title{font-size:clamp(22px,5.5vw,28px);font-weight:600;margin-bottom:4px}
+    .browse-section-label{font-size:clamp(11px,2.8vw,13px);letter-spacing:.18em;
+      text-transform:uppercase;color:var(--dim);font-weight:400;
+      margin:16px 0 6px;padding-left:4px}
+    .pattern-card{padding:18px 20px;border-radius:16px;
+      border:1.5px solid var(--border);background:var(--surface);
+      cursor:pointer;-webkit-tap-highlight-color:transparent;
+      display:flex;align-items:center;gap:16px;
+      transition:border-color .2s,background .2s}
+    .pattern-card:active{filter:brightness(1.1)}
+    .pattern-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+    .pattern-card-text{display:flex;flex-direction:column;gap:4px;flex:1}
+    .pattern-card-name{font-size:clamp(18px,4.5vw,22px);font-weight:400}
+    .pattern-card-desc{font-size:clamp(12px,3vw,14px);color:var(--dim);font-weight:300}
+    .pattern-card-arrow{color:var(--dim);font-size:18px;flex-shrink:0}
+
+    /* PATTERN SCREEN */
+    #s-pattern{gap:0;justify-content:center;overflow-y:auto;padding-top:70px;padding-bottom:40px}
+    .pattern-inner{width:100%;max-width:420px;display:flex;flex-direction:column;
+      align-items:center;gap:20px;padding-bottom:20px}
+    .pattern-name{font-size:clamp(28px,7vw,38px);font-weight:600;
+      text-align:center;letter-spacing:.04em}
+    .pattern-rhythm{font-size:clamp(13px,3.2vw,15px);letter-spacing:.16em;
+      text-transform:uppercase;color:var(--dim);font-weight:400;text-align:center}
+
+    /* ORB */
+    .orb-wrap{position:relative;width:clamp(180px,48vw,220px);height:clamp(180px,48vw,220px);
+      cursor:pointer;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+    #breathCanvas{width:100%;height:100%}
+    .orb-label{position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:4px;pointer-events:none}
+    .orb-phase{font-family:var(--sans);font-size:clamp(20px,5vw,26px);font-weight:600;
+      letter-spacing:.14em;text-transform:uppercase}
+    .orb-count{font-family:var(--sans);font-size:clamp(32px,8vw,44px);font-weight:600;line-height:1}
+
+    .phase-indicator{display:flex;gap:8px;align-items:center;justify-content:center}
+    .phase-dot{width:8px;height:8px;border-radius:50%;background:var(--border);
+      transition:background .3s,transform .3s}
+    .phase-dot.active{transform:scale(1.4)}
+
+    .skip-hold-btn{background:none;border:1px solid var(--border);
+      border-radius:999px;padding:8px 20px;
+      font-family:var(--serif);font-size:clamp(12px,3vw,14px);font-weight:300;
+      color:var(--dim);cursor:pointer;-webkit-tap-highlight-color:transparent;
+      transition:border-color .2s,color .2s;display:none}
+    .skip-hold-btn.visible{display:block}
+    .skip-hold-btn:active{color:var(--text);border-color:var(--text)}
+
+    .stop-btn{background:none;border:none;
+      font-family:var(--serif);font-size:clamp(12px,3vw,14px);font-weight:300;
+      color:rgba(240,238,232,.22);cursor:pointer;-webkit-tap-highlight-color:transparent;
+      letter-spacing:.10em;padding:8px}
+    [data-theme="light"] .stop-btn{color:rgba(26,26,42,.22)}
+
+    /* INFO PANEL */
+    .info-panel{width:100%;background:var(--surface);border:1.5px solid var(--border);
+      border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px}
+    .info-science{font-size:clamp(14px,3.5vw,16px);font-weight:300;
+      color:var(--dim);line-height:1.75}
+    .info-nd{background:rgba(255,255,255,.04);border-radius:12px;
+      padding:14px 16px}
+    [data-theme="light"] .info-nd{background:rgba(0,0,0,.04)}
+    .info-nd-label{font-size:clamp(11px,2.8vw,13px);letter-spacing:.16em;
+      text-transform:uppercase;font-weight:600;margin-bottom:6px}
+    .info-nd-text{font-size:clamp(14px,3.5vw,16px);font-weight:300;
+      color:var(--dim);line-height:1.7}
+    .info-tradition{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}
+    .info-tradition-label{font-size:clamp(11px,2.8vw,13px);letter-spacing:.16em;
+      text-transform:uppercase;color:var(--dim);font-weight:400;margin-bottom:6px}
+    .info-tradition-text{font-size:clamp(14px,3.5vw,16px);font-weight:300;
+      color:var(--dim);line-height:1.75;font-style:italic}
+
+    /* SESSION COMPLETE */
+    #s-complete{gap:20px}
+    .complete-icon{font-size:56px}
+    .complete-title{font-size:clamp(26px,6.5vw,34px);font-weight:600;text-align:center}
+    .complete-sub{font-size:clamp(15px,3.8vw,18px);font-weight:300;
+      color:var(--dim);text-align:center;max-width:280px;line-height:1.7}
+    .complete-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;margin-top:8px}
+    .complete-btn{padding:18px;border-radius:14px;
+      font-family:var(--serif);font-size:clamp(16px,4vw,18px);font-weight:400;
+      cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .2s;
+      border:1.5px solid var(--border);background:var(--surface);color:var(--text)}
+    .complete-btn.primary{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+
+    .fade-in{animation:fadeUp .35s ease forwards}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</head>
+<body>
+<canvas id="rippleCanvas"></canvas>
+
+<div id="chrome">
+  <button class="back-btn" onclick="goBack()">←</button>
+  <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
+</div>
+
+<!-- HOME -->
+<div class="screen active" id="s-home">
+  <div class="home-wordmark" id="homeWordmark">Breath</div>
+  <div class="home-sub">ancient practice · modern science</div>
+  <div class="home-btns">
+    <button class="home-btn" onclick="showState()">
+      <span class="home-btn-icon">🌊</span>
+      <div class="home-btn-text">
+        <div class="home-btn-label">How are you feeling?</div>
+        <div class="home-btn-hint">guide me to the right practice</div>
+      </div>
+    </button>
+    <button class="home-btn" onclick="showBrowse()">
+      <span class="home-btn-icon">✦</span>
+      <div class="home-btn-text">
+        <div class="home-btn-label">Browse all patterns</div>
+        <div class="home-btn-hint">choose your own practice</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- STATE PICKER -->
+<div class="screen" id="s-state">
+  <div class="state-title">What do you need right now?</div>
+  <div class="state-grid">
+    <button class="state-btn fade-in" onclick="routeState('anxious')" style="animation-delay:.05s">
+      <span class="state-icon">😰</span>Anxious or overwhelmed
+    </button>
+    <button class="state-btn fade-in" onclick="routeState('stress')" style="animation-delay:.10s">
+      <span class="state-icon">🌋</span>Stressed, activated, wound up
+    </button>
+    <button class="state-btn fade-in" onclick="routeState('flat')" style="animation-delay:.15s">
+      <span class="state-icon">🪫</span>Low energy, flat, foggy
+    </button>
+    <button class="state-btn fade-in" onclick="routeState('focus')" style="animation-delay:.20s">
+      <span class="state-icon">🎯</span>Need to focus or concentrate
+    </button>
+    <button class="state-btn fade-in" onclick="routeState('sleep')" style="animation-delay:.25s">
+      <span class="state-icon">🌙</span>Can't sleep or wind down
+    </button>
+    <button class="state-btn fade-in" onclick="routeState('present')" style="animation-delay:.30s">
+      <span class="state-icon">🌿</span>Just want to be present
+    </button>
+  </div>
+</div>
+
+<!-- BROWSE -->
+<div class="screen" id="s-browse">
+  <div class="browse-inner">
+    <div class="browse-title">All Patterns</div>
+    <div class="browse-section-label">Ancient tradition</div>
+    <div class="pattern-card fade-in" onclick="startPattern('anapana')" style="--c:rgba(138,191,184,1);border-color:rgba(138,191,184,.25)">
+      <div class="pattern-dot" style="background:#8abfb8"></div>
+      <div class="pattern-card-text">
+        <div class="pattern-card-name">Anapana</div>
+        <div class="pattern-card-desc">pure breath observation · 2500 years old</div>
+      </div>
+      <div class="pattern-card-arrow">→</div>
+    </div>
+    <div class="browse-section-label">Calming & anxiety</div>
+    <div class="pattern-card fade-in" onclick="startPattern('physiological')" style="border-color:rgba(167,139,250,.25)">
+      <div class="pattern-dot" style="background:#a78bfa"></div>
+      <div class="pattern-card-text">
+        <div class="pattern-card-name">Physiological Sigh</div>
+        <div class="pattern-card-desc">fastest stress relief · Stanford research</div>
+      </div>
+      <div class="pattern-card-arrow">→</div>
+    </div>
+    <div class="pattern-card fade-in" onclick="startPattern('extended')" style="border-color:rgba(90,181,212,.25)">
+      <div class="pattern-dot" style="background:#5ab5d4"></div>
+      <div class="pattern-card-text">
+        <div class="pattern-card-name">Extended Exhale</div>
+        <div class="pattern-card-desc">4 in · 6 out · vagal activation</div>
+      </div>
+      <div class="pattern-card-arrow">→</div>
+    </div>
+    <div class="pattern-card fade-in" onclick="startPattern('478')" style="border-color:rgba(179,157,219,.25)">
+      <div class="pattern-dot" style="background:#b39ddb"></div>
+      <div class="pattern-card-text">
+        <div class="pattern-card-name">4-7-8</div>
+        <div class="pattern-card-desc">deep calm · sleep onset</div>
+      </div>
+      <div class="pattern-card-arrow">→</div>
+    </div>
+    <div class="browse-section-label">Balance & focus</div>
+    <div class="pattern-card fade-in" onclick="startPattern('box')" style="border-color:rgba(126,200,227,.25)">
+      <div class="pattern-dot" style="background:#7ec8e3"></div>
+      <div class="pattern-card-text">
+        <div class="pattern-card-name">Box Breathing</div>
+        <div class="pattern-card-desc">4-4-4-4 · nervous system balance</div>
+      </div>
+      <div class="pattern-card-arrow">→</div>
+    </div>
+    <div class="pattern-card fade-in" onclick="startPattern('coherent')" style="border-color:rgba(120,240,177,.25)">
+      <div class="pattern-dot" style="background:#78f0b1"></div>
+      <div class="pattern-card-text">
+        <div class="pattern-card-name">Coherent Breathing</div>
+        <div class="pattern-card-desc">5.5 · 5.5 · heart-brain coherence</div>
+      </div>
+      <div class="pattern-card-arrow">→</div>
+    </div>
+    <div class="browse-section-label">Energy & activation</div>
+    <div class="pattern-card fade-in" onclick="startPattern('fire')" style="border-color:rgba(255,140,105,.25)">
+      <div class="pattern-dot" style="background:#FF8C69"></div>
+      <div class="pattern-card-text">
+        <div class="pattern-card-name">Breath of Fire</div>
+        <div class="pattern-card-desc">rapid · energising · ADHD activation</div>
+      </div>
+      <div class="pattern-card-arrow">→</div>
+    </div>
+    <div class="pattern-card fade-in" onclick="startPattern('221')" style="border-color:rgba(255,209,102,.25)">
+      <div class="pattern-dot" style="background:#FFD166"></div>
+      <div class="pattern-card-text">
+        <div class="pattern-card-name">2-1-4-1</div>
+        <div class="pattern-card-desc">gentle activation · focus entry</div>
+      </div>
+      <div class="pattern-card-arrow">→</div>
+    </div>
+  </div>
+</div>
+
+<!-- PATTERN PRACTICE -->
+<div class="screen" id="s-pattern">
+  <div class="pattern-inner">
+    <div class="pattern-name" id="patternName"></div>
+    <div class="pattern-rhythm" id="patternRhythm"></div>
+    <div class="orb-wrap" id="orbWrap" onclick="orbTapped()">
+      <canvas id="breathCanvas"></canvas>
+      <div class="orb-label">
+        <div class="orb-phase" id="orbPhase"></div>
+        <div class="orb-count" id="orbCount"></div>
+      </div>
+    </div>
+    <div class="phase-indicator" id="phaseIndicator"></div>
+    <button class="skip-hold-btn" id="skipHoldBtn" onclick="skipHold()">skip hold</button>
+    <div class="info-panel" id="infoPanel">
+      <div class="info-science" id="infoScience"></div>
+      <div class="info-nd" id="infoNd" style="display:none">
+        <div class="info-nd-label" id="infoNdLabel">For ND brains</div>
+        <div class="info-nd-text" id="infoNdText"></div>
+      </div>
+      <div class="info-tradition" id="infoTradition" style="display:none">
+        <div class="info-tradition-label">tradition</div>
+        <div class="info-tradition-text" id="infoTraditionText"></div>
+      </div>
+    </div>
+    <button class="stop-btn" onclick="stopPattern()">end practice</button>
+  </div>
+</div>
+
+<!-- COMPLETE -->
+<div class="screen" id="s-complete">
+  <div class="complete-icon" id="completeIcon"></div>
+  <div class="complete-title" id="completeTitle"></div>
+  <div class="complete-sub" id="completeSub"></div>
+  <div class="complete-btns">
+    <button class="complete-btn primary" id="completeAgain" onclick="repeatPattern()">Practice again</button>
+    <button class="complete-btn" onclick="showBrowse()">Try another pattern</button>
+    <button class="complete-btn" onclick="goHome()">Back to home</button>
+  </div>
+</div>
+
+<script>
+// ── RIPPLE ──
+var rc=document.getElementById('rippleCanvas'),rx=rc.getContext('2d');
+var rW,rH,ripples=[];
+function rsz(){var d=devicePixelRatio||1;rW=innerWidth;rH=innerHeight;rc.width=rW*d;rc.height=rH*d;rc.style.width=rW+'px';rc.style.height=rH+'px';rx.setTransform(1,0,0,1,0,0);rx.scale(d,d);}
+window.addEventListener('resize',rsz);rsz();
+function spawnRipple(x,y,rgb,size){var m=Math.max(rW,rH),maxR=size==='xl'?m*.85:size==='large'?m*.55:size==='medium'?m*.32:m*.18;ripples.push({x:x,y:y,r:2,maxR:maxR,rgb:rgb,alpha:.55});}
+(function loop(){requestAnimationFrame(loop);rx.clearRect(0,0,rW,rH);ripples=ripples.filter(function(r){return r.alpha>0.003;});ripples.forEach(function(rp){rp.r+=(rp.maxR-rp.r)*.012;rp.alpha=Math.max(0,rp.alpha-.004);for(var i=0;i<3;i++){var ringR=rp.r*(1-i*.20);if(ringR<1)return;var a=rp.alpha*(1-i*.28);rx.save();rx.beginPath();rx.arc(rp.x,rp.y,ringR,0,Math.PI*2);rx.strokeStyle='rgba('+rp.rgb+','+a.toFixed(3)+')';rx.lineWidth=Math.max(1,3-i*.8);rx.shadowBlur=10;rx.shadowColor='rgba('+rp.rgb+','+(a*.4).toFixed(3)+')';rx.stroke();rx.restore();}});})();
+
+// ── THEME ──
+var isDark=true;
+function toggleTheme(){isDark=!isDark;document.documentElement.setAttribute('data-theme',isDark?'dark':'light');document.getElementById('themeBtn').textContent=isDark?'☀️':'🌙';}
+
+// ── SCREENS ──
+function showScreen(id){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});var n=document.getElementById(id);if(n){n.classList.add('active');n.scrollTop=0;}}
+function goHome(){stopBreath();showScreen('s-home');document.getElementById('chrome').style.display='none';spawnRipple(rW/2,rH/2,'240,238,232','large');}
+function goBack(){stopBreath();var cur=document.querySelector('.screen.active');if(!cur)return;var id=cur.id;if(id==='s-state'||id==='s-browse'){goHome();}else if(id==='s-pattern'||id==='s-complete'){showBrowse();}else{goHome();}}
+function showState(){showScreen('s-state');document.getElementById('chrome').style.display='flex';spawnRipple(rW/2,rH/2,'240,238,232','medium');}
+function showBrowse(){stopBreath();showScreen('s-browse');document.getElementById('chrome').style.display='flex';}
+
+// ── STATE ROUTING ──
+var STATE_MAP={
+  anxious:'physiological',
+  stress:'extended',
+  flat:'fire',
+  focus:'box',
+  sleep:'478',
+  present:'anapana'
+};
+function routeState(state){startPattern(STATE_MAP[state]);}
+
+// ── PATTERNS DATA ──
+var PATTERNS={
+  anapana:{
+    name:'Anapana',
+    color:'138,191,184',hex:'#8abfb8',
+    rhythm:'natural breath · no control',
+    phases:[{name:'observe',dur:0,type:'free'}],
+    free:true,
+    science:'Anapana is the practice of bare attention to the natural breath — not controlling it, just watching. Research on mindfulness of breath shows measurable reductions in default mode network activity, reduced rumination, and improved attentional control with regular practice.',
+    nd:'For ND brains, pure observation can be more accessible than controlled patterns — there is nothing to get wrong. If your mind wanders, that is the practice. Noticing the wandering is the meditation.',
+    tradition:'Anapana (Pali: ānāpānasati, "mindfulness of breathing") is described in the Ānāpānasati Sutta (MN 118), one of the most detailed meditation discourses in the Pali Canon. The Buddha taught it to a large assembly of monks at Savatthi, describing sixteen steps of breath observation. The practice is at least 2,500 years old and is considered a complete path to liberation in Theravada Buddhism. It begins simply: sit, and know that you are breathing in. Know that you are breathing out.',
+    complete:{icon:'🌿',title:'Present.',sub:'The breath was always here. You just noticed it.'}
+  },
+  physiological:{
+    name:'Physiological Sigh',
+    color:'167,139,250',hex:'#a78bfa',
+    rhythm:'double inhale · long exhale',
+    phases:[{name:'inhale',dur:2,type:'in'},{name:'inhale again',dur:1,type:'in'},{name:'exhale',dur:6,type:'out'}],
+    cycles:5,
+    science:'Researchers at Stanford (Huberman, Spiegel et al., 2023) found the physiological sigh is the fastest known method to reduce acute stress — faster than meditation or other breathing techniques. A double inhale re-inflates collapsed alveoli in the lungs, and the extended exhale activates the parasympathetic nervous system via the vagus nerve. Even one cycle measurably reduces heart rate and cortisol.',
+    nd:'This is particularly useful for ND brains experiencing emotional flooding, overwhelm, or sensory overload. It works in seconds and can be done anywhere without anyone noticing. One breath. That is genuinely enough.',
+    complete:{icon:'💜',title:'Recalibrated.',sub:'Your nervous system just reset. One breath was enough.'}
+  },
+  extended:{
+    name:'Extended Exhale',
+    color:'90,181,212',hex:'#5ab5d4',
+    rhythm:'4 in · 6 out',
+    phases:[{name:'inhale',dur:4,type:'in'},{name:'exhale',dur:6,type:'out'}],
+    cycles:8,
+    science:'When the exhale is longer than the inhale, the vagus nerve signals the brain to activate the parasympathetic "rest and digest" system. Heart rate slows. Cortisol drops. Even a ratio as simple as 4 in, 6 out produces measurable reductions in anxiety within a few minutes.',
+    nd:'Extended exhale breathing is gentle and forgiving — no holds to worry about, no complex counting. For anxiety-prone ND brains it is one of the most accessible regulated breathing patterns. If 4-6 feels hard, try 3-5 or even 2-4. The ratio matters more than the numbers.',
+    complete:{icon:'🌊',title:'Calmer.',sub:'The exhale is the release. You let something go.'}
+  },
+  '478':{
+    name:'4-7-8',
+    color:'179,157,219',hex:'#b39ddb',
+    rhythm:'4 in · hold 7 · 8 out',
+    phases:[{name:'inhale',dur:4,type:'in'},{name:'hold',dur:7,type:'hold'},{name:'exhale',dur:8,type:'out'}],
+    cycles:4,
+    hasHold:true,
+    science:'Developed by Dr Andrew Weil, drawing from pranayama tradition. The extended hold builds carbon dioxide tolerance and the long exhale strongly activates the parasympathetic system. Often recommended for sleep onset, as the cycle slows physiological arousal significantly. Four cycles is typically sufficient.',
+    nd:'The breath hold in this pattern can feel uncomfortable for anxious ND brains. That discomfort is normal and safe — but if it increases anxiety rather than reducing it, skip the hold or reduce it to 4 counts. The extended exhale alone still provides most of the benefit.',
+    complete:{icon:'🌙',title:'Settled.',sub:'Your body is ready for rest. Let yourself go.'}
+  },
+  box:{
+    name:'Box Breathing',
+    color:'126,200,227',hex:'#7ec8e3',
+    rhythm:'4 · 4 · 4 · 4',
+    phases:[{name:'inhale',dur:4,type:'in'},{name:'hold',dur:4,type:'hold'},{name:'exhale',dur:4,type:'out'},{name:'hold',dur:4,type:'hold'}],
+    cycles:6,
+    hasHold:true,
+    science:'Box breathing (equal ratio breathing) is used by US Navy SEALs, clinical psychologists, and athletes for stress regulation and focus. The equal rhythm balances the sympathetic and parasympathetic systems rather than strongly activating either. Research shows it reduces both anxiety and the cortisol response to acute stress while improving sustained attention.',
+    nd:'Box breathing is highly structured — which some ND brains find grounding and others find rigid. Try it for 2-3 cycles. If the predictable rhythm helps your nervous system settle, continue. If the holds feel constraining, switch to Extended Exhale which gives similar benefits without holds.',
+    complete:{icon:'🎯',title:'Balanced.',sub:'Four sides. Four counts. Nothing extra needed.'}
+  },
+  coherent:{
+    name:'Coherent Breathing',
+    color:'120,240,177',hex:'#78f0b1',
+    rhythm:'5.5 in · 5.5 out',
+    phases:[{name:'inhale',dur:5.5,type:'in'},{name:'exhale',dur:5.5,type:'out'}],
+    cycles:10,
+    science:'Breathing at approximately 5.5 breaths per minute (5.5 seconds in, 5.5 seconds out) is said to optimise heart rate variability (HRV) — the measure of nervous system flexibility linked to emotional regulation, resilience, and cognitive performance. Research by Stephen Elliott and work referenced in James Nestor\'s Breath suggests this frequency resonates with the body\'s natural oscillation rhythms.',
+    nd:'The slow, even rhythm of coherent breathing can feel almost hypnotic — which many ND brains find deeply regulating. It requires patience with the slower pace. If 5.5 seconds feels too long initially, start with 4 seconds each way and gradually extend.',
+    complete:{icon:'💚',title:'In coherence.',sub:'Heart and brain, breathing together.'}
+  },
+  fire:{
+    name:'Breath of Fire',
+    color:'255,140,105',hex:'#FF8C69',
+    rhythm:'rapid · rhythmic · through nose',
+    phases:[{name:'pump',dur:0.3,type:'in'},{name:'release',dur:0.3,type:'out'}],
+    cycles:30,
+    science:'Breath of fire (kapalabhati in Sanskrit) involves rapid rhythmic breathing that activates the sympathetic nervous system — increasing heart rate, raising body temperature, and releasing adrenaline. It is energising and warming. Some research suggests it improves oxygenation and cognitive alertness. It is best used for low-energy states, not anxiety.',
+    nd:'For ADHD brains that are flat, foggy, or dopamine-depleted, breath of fire can create rapid energetic activation — similar to the effect of movement. Use it before tasks requiring focus and energy, not before sleep or when already activated. Stop if you feel dizzy — this is normal and a sign to slow down.',
+    complete:{icon:'🔥',title:'Activated.',sub:'Energy was always there. You just moved it.'}
+  },
+  '221':{
+    name:'2-1-4-1',
+    color:'255,209,102',hex:'#FFD166',
+    rhythm:'2 in · hold 1 · 4 out · hold 1',
+    phases:[{name:'inhale',dur:2,type:'in'},{name:'hold',dur:1,type:'hold'},{name:'exhale',dur:4,type:'out'},{name:'hold',dur:1,type:'hold'}],
+    cycles:8,
+    hasHold:true,
+    science:'A gentle activation pattern — shorter than box breathing, with a slightly extended exhale for mild parasympathetic activation. Useful as a transition breath: calming enough to reduce mental noise, with enough structure to support sustained attention. Good for entering focused work.',
+    nd:'The short counts make this accessible for ND brains who find longer patterns frustrating. The brief holds are easier to tolerate than 4-7-8. A good entry point if you are new to counted breathing.',
+    complete:{icon:'✦',title:'Ready.',sub:'A gentle transition. You brought yourself here.'}
+  }
+};
+
+// ── BREATH ENGINE ──
+var breathRAF=null,breathPhaseIdx=0,breathCount=0,breathCycleCount=0;
+var currentPattern=null,breathActive=false,skippingHold=false;
+var bc=document.getElementById('breathCanvas'),bctx=bc.getContext('2d');
+var orbR=0,orbTarget=0,orbT=0,orbLast=null;
+var breathPhaseStart=null,breathPhaseDur=0;
+
+function resizeBreathCanvas(){var d=devicePixelRatio||1;var w=bc.offsetWidth;var h=bc.offsetHeight;bc.width=w*d;bc.height=h*d;bctx.setTransform(1,0,0,1,0,0);bctx.scale(d,d);}
+window.addEventListener('resize',resizeBreathCanvas);
+
+function startPattern(key){
+  stopBreath();
+  currentPattern=PATTERNS[key];
+  if(!currentPattern)return;
+  showScreen('s-pattern');
+  document.getElementById('chrome').style.display='flex';
+
+  // Set accent colour
+  var hex=currentPattern.hex;
+  var rgb=currentPattern.color;
+  document.documentElement.style.setProperty('--accent',hex);
+  document.documentElement.style.setProperty('--accent-dim','rgba('+rgb+',.12)');
+
+  document.getElementById('patternName').style.color=hex;
+  document.getElementById('patternName').textContent=currentPattern.name;
+  document.getElementById('patternRhythm').textContent=currentPattern.rhythm;
+
+  // Info
+  document.getElementById('infoScience').textContent=currentPattern.science;
+  var ndEl=document.getElementById('infoNd');
+  var ndText=document.getElementById('infoNdText');
+  if(currentPattern.nd){ndEl.style.display='block';ndText.textContent=currentPattern.nd;document.getElementById('infoNdLabel').style.color=hex;}
+  else{ndEl.style.display='none';}
+  var tradEl=document.getElementById('infoTradition');
+  var tradText=document.getElementById('infoTraditionText');
+  if(currentPattern.tradition){tradEl.style.display='block';tradText.textContent=currentPattern.tradition;}
+  else{tradEl.style.display='none';}
+
+  // Phase dots
+  var pi=document.getElementById('phaseIndicator');pi.innerHTML='';
+  if(!currentPattern.free){currentPattern.phases.forEach(function(p,i){var dot=document.createElement('div');dot.className='phase-dot';dot.id='pdot'+i;dot.style.background='rgba('+currentPattern.color+',.25)';pi.appendChild(dot);});}
+
+  // Complete button colour
+  document.getElementById('completeAgain').style.borderColor=hex;
+  document.getElementById('completeAgain').style.color=hex;
+  document.getElementById('completeAgain').style.background='rgba('+rgb+',.12)';
+
+  spawnRipple(rW/2,rH/2,rgb,'large');
+
+  setTimeout(function(){
+    resizeBreathCanvas();
+    if(currentPattern.free){startFreeBreath();}
+    else{startCycledBreath();}
+  },300);
+}
+
+// Free breath (anapana)
+var freeTimer=null,freeSeconds=0;
+function startFreeBreath(){
+  breathActive=true;
+  orbTarget=0.45;
+  freeSeconds=0;
+  document.getElementById('orbPhase').textContent='observe';
+  document.getElementById('orbPhase').style.color=currentPattern.hex;
+  document.getElementById('orbCount').textContent='';
+  document.getElementById('orbCount').style.color=currentPattern.hex;
+  document.getElementById('skipHoldBtn').classList.remove('visible');
+  freeTimer=setInterval(function(){
+    freeSeconds++;
+    spawnRipple(rW/2,rH/2,currentPattern.color,'small');
+  },8000);
+  breathRAF=requestAnimationFrame(drawOrb);
+}
+
+// Cycled breath
+function startCycledBreath(){
+  breathActive=true;
+  breathPhaseIdx=0;breathCycleCount=0;breathCount=0;
+  breathPhaseStart=null;
+  breathRAF=requestAnimationFrame(cycleBreath);
+}
+
+function cycleBreath(ts){
+  if(!breathActive){return;}
+  drawOrb(ts);
+  var p=currentPattern.phases[breathPhaseIdx];
+  if(!breathPhaseStart)breathPhaseStart=ts;
+  var elapsed=(ts-breathPhaseStart)/1000;
+  var isHold=p.type==='hold';
+  var skipBtn=document.getElementById('skipHoldBtn');
+  if(isHold&&currentPattern.hasHold){skipBtn.classList.add('visible');}
+  else{skipBtn.classList.remove('visible');}
+
+  // Count display
+  var remaining=Math.ceil(p.dur-elapsed);
+  if(remaining<1)remaining=1;
+  var orbCount=document.getElementById('orbCount');
+  var orbPhase=document.getElementById('orbPhase');
+  orbCount.textContent=remaining;
+  orbCount.style.color=currentPattern.hex;
+  orbPhase.textContent=p.name;
+  orbPhase.style.color=currentPattern.hex;
+
+  // Orb target
+  if(p.type==='in'){orbTarget=0.85+(breathPhaseIdx===0&&p===currentPattern.phases[0]?0:0);}
+  else if(p.type==='out'){orbTarget=0.15;}
+  else{orbTarget=isHold&&breathPhaseIdx>0?0.85:0.15;}
+
+  // Phase dot
+  document.querySelectorAll('.phase-dot').forEach(function(d,i){
+    d.classList.toggle('active',i===breathPhaseIdx);
+    d.style.background=i===breathPhaseIdx?currentPattern.hex:'rgba('+currentPattern.color+',.25)';
+  });
+
+  if(elapsed>=p.dur||skippingHold){
+    skippingHold=false;
+    breathPhaseStart=ts;
+    breathPhaseIdx++;
+    if(breathPhaseIdx>=currentPattern.phases.length){
+      breathPhaseIdx=0;breathCycleCount++;
+      if(breathCycleCount>=currentPattern.cycles){
+        completePattern();return;
+      }
+      spawnRipple(rW/2,rH/2,currentPattern.color,'small');
+    }
+  }
+  breathRAF=requestAnimationFrame(cycleBreath);
+}
+
+function drawOrb(ts){
+  if(!bc||!bctx)return;
+  var W=bc.offsetWidth,H=bc.offsetHeight;
+  if(!W||!H)return;
+  orbR+=(orbTarget-orbR)*.04;
+  var r=Math.min(W,H)/2*orbR;
+  var cx=W/2,cy=H/2;
+  var rgb=currentPattern?currentPattern.color:'240,238,232';
+  var hex=currentPattern?currentPattern.hex:'#f0eee8';
+  bctx.clearRect(0,0,W,H);
+  // Glow
+  var g=bctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)/2);
+  g.addColorStop(0,'rgba('+rgb+','+(0.18*orbR).toFixed(3)+')');
+  g.addColorStop(0.6,'rgba('+rgb+','+(0.06*orbR).toFixed(3)+')');
+  g.addColorStop(1,'rgba('+rgb+',0)');
+  bctx.beginPath();bctx.arc(cx,cy,Math.min(W,H)/2,0,Math.PI*2);bctx.fillStyle=g;bctx.fill();
+  // Rings
+  for(var i=2;i>=0;i--){var rr=r*(1+i*.18);var a=(0.45-i*.12)*orbR;bctx.beginPath();bctx.arc(cx,cy,rr,0,Math.PI*2);bctx.strokeStyle='rgba('+rgb+','+Math.max(0,a).toFixed(3)+')';bctx.lineWidth=Math.max(.5,2-i*.5);bctx.shadowBlur=8+i*4;bctx.shadowColor='rgba('+rgb+','+(a*.5).toFixed(3)+')';bctx.stroke();}
+  // Core
+  var cg=bctx.createRadialGradient(cx,cy,0,cx,cy,r);cg.addColorStop(0,'rgba('+rgb+','+(0.30*orbR).toFixed(3)+')');cg.addColorStop(1,'rgba('+rgb+',0)');bctx.beginPath();bctx.arc(cx,cy,r,0,Math.PI*2);bctx.fillStyle=cg;bctx.fill();
+  if(breathActive)breathRAF=requestAnimationFrame(currentPattern&&currentPattern.free?drawOrb:null)||breathRAF;
+}
+
+function orbTapped(){spawnRipple(rW/2,rH/2,currentPattern?currentPattern.color:'240,238,232','small');}
+function skipHold(){skippingHold=true;}
+function stopBreath(){breathActive=false;if(breathRAF){cancelAnimationFrame(breathRAF);breathRAF=null;}if(freeTimer){clearInterval(freeTimer);freeTimer=null;}if(bctx&&bc){bctx.clearRect(0,0,bc.offsetWidth,bc.offsetHeight);}}
+function stopPattern(){stopBreath();showBrowse();}
+function completePattern(){
+  stopBreath();
+  var cp=currentPattern;
+  showScreen('s-complete');
+  document.getElementById('chrome').style.display='flex';
+  document.getElementById('completeIcon').textContent=cp.complete.icon;
+  document.getElementById('completeTitle').textContent=cp.complete.title;
+  document.getElementById('completeTitle').style.color=cp.hex;
+  document.getElementById('completeSub').textContent=cp.complete.sub;
+  spawnRipple(rW/2,rH/2,cp.color,'xl');
+}
+function repeatPattern(){if(currentPattern)startPattern(Object.keys(PATTERNS).find(function(k){return PATTERNS[k]===currentPattern;}));}
+</script>
+</body>
+</html>
