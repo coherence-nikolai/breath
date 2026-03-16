@@ -65,7 +65,7 @@
     #s-practice{background:transparent;justify-content:center;padding:0}
 
     /* Phase display — floating centre */
-    #practiceCenter{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:20;opacity:0;transition:opacity .5s}
+    #practiceCenter{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:50;opacity:0;transition:opacity .5s}
     #practiceCenter.show{opacity:1}
     #phaseLabel{font-family:var(--sans);font-size:clamp(16px,4vw,22px);font-weight:400;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:8px;transition:color .5s}
     [data-theme="light"] #phaseLabel{color:rgba(26,26,42,.45)}
@@ -73,13 +73,13 @@
     [data-theme="light"] #phaseCount{color:rgba(26,26,42,.65)}
 
     /* Phase dots */
-    #phaseDots{position:fixed;bottom:max(env(safe-area-inset-bottom),100px);left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:20;opacity:0;transition:opacity .5s}
+    #phaseDots{position:fixed;bottom:max(env(safe-area-inset-bottom),100px);left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:50;opacity:0;transition:opacity .5s}
     #phaseDots.show{opacity:1}
     .pdot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.20);transition:background .3s,transform .3s}
     .pdot.active{transform:scale(1.5)}
 
     /* Practice controls */
-    #practiceControls{position:fixed;bottom:max(env(safe-area-inset-bottom),24px);left:0;right:0;display:flex;justify-content:center;gap:16px;z-index:20;opacity:0;transition:opacity .5s;pointer-events:none}
+    #practiceControls{position:fixed;bottom:max(env(safe-area-inset-bottom),24px);left:0;right:0;display:flex;justify-content:center;gap:16px;z-index:50;opacity:0;transition:opacity .5s;pointer-events:none}
     #practiceControls.show{opacity:1;pointer-events:all}
     .pctrl{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:999px;padding:10px 22px;font-family:var(--serif);font-size:13px;font-weight:300;color:rgba(255,255,255,.55);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:color .2s,background .2s}
     .pctrl:active{background:rgba(255,255,255,.15)}
@@ -172,12 +172,14 @@
 <!-- PRACTICE (full screen) -->
 <div class="screen" id="s-practice"></div>
 
+<!-- These live OUTSIDE screens so they're always on top -->
 <div id="practiceCenter">
   <div id="phaseLabel"></div>
   <div id="phaseCount"></div>
 </div>
 <div id="phaseDots"></div>
 <div id="practiceControls">
+  <button class="pctrl" id="backPracticeBtn" onclick="showBrowse()">←</button>
   <button class="pctrl" id="skipBtn" onclick="skipHold()">skip hold</button>
   <button class="pctrl" id="aboutBtn" onclick="openAbout()">✦ about</button>
   <button class="pctrl" onclick="stopPractice()">end</button>
@@ -524,11 +526,10 @@ function cycleStep(ts){
     if(phaseIdx>=curP.phases.length){
       phaseIdx=0;cycleCount++;
       if(cycleCount>=curP.cycles){completePractice();return;}
-      // Tap ripple on cycle complete
       touchRipples.push({r:.1,a:.6});
     }
   }
-  setTimeout(function(){if(breathActive)requestAnimationFrame(cycleStep);},16);
+  if(breathActive)requestAnimationFrame(cycleStep);
 }
 
 // ── FREE BREATH (anapana) ──
