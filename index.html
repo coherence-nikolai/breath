@@ -118,6 +118,7 @@
 
 <button id="topBack" onclick="goBack()">←</button>
 <div id="topRight">
+  <button class="top-btn" id="soundBtn" onclick="toggleSound()">🔇</button>
   <button class="top-btn" id="langBtn" onclick="toggleLang()">ES</button>
   <button class="top-btn" id="themeBtn" onclick="toggleTheme()">☀️</button>
 </div>
@@ -523,6 +524,8 @@ function cycleStep(ts){
   if(!phaseStart)phaseStart=ts;
   var p=curP.phases[phaseIdx];
   var elapsed=(ts-phaseStart)/1000;
+  // Play sound at start of each phase
+  if(elapsed<.05)playPhaseSound(p.t,curKey);
   var rem=Math.max(1,Math.ceil(p.d-elapsed));
   var isHold=p.t==='hold'||p.t==='hold2';
   var L=lang;
@@ -613,6 +616,7 @@ function startPattern(key){
   skipFlag=false;lightAngle=0;sineT=0;shockA=0;crystalV=0;sparks=[];touchRipples=[];
 
   showScreen('s-practice');
+  startPatternAudio(key);
   setTimeout(function(){
     initMist();breathActive=true;
     RAF=requestAnimationFrame(drawPractice);
@@ -623,6 +627,7 @@ function startPattern(key){
 
 function stopPractice(){
   breathActive=false;
+  stopDrone();
   if(RAF){cancelAnimationFrame(RAF);RAF=null;}
   if(freeInt){clearInterval(freeInt);freeInt=null;}
   setBgColor(0,0,0,0);
@@ -698,6 +703,7 @@ function spawnI(){
   }
 }
 spawnI();
+setTimeout(function(){if(soundOn&&audioCtx)playIntroWind('in');},100);
 
 function runIntro(){
   if(iDone)return;
@@ -734,10 +740,155 @@ function runIntro(){
       return;
     }
   }
-  if(iT>1.8&&iPhase==='in'){iPhase='out';iT=0;spawnI();}
+  if(iT>1.8&&iPhase==='in'){iPhase='out';iT=0;spawnI();if(soundOn&&audioCtx)playIntroWind('out');}
   if(iT>1.8&&iPhase==='out'){iPhase='fade';}
 }
 runIntro();
+
+// ── AUDIO ENGINE ──
+var audioCtx=null,soundOn=false,currentDrone=null,droneGain=null;
+
+function initAudio(){
+  if(audioCtx)return;
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+}
+
+function toggleSound(){
+  soundOn=!soundOn;
+  document.getElementById('soundBtn').textContent=soundOn?'🔊':'🔇';
+  if(soundOn){
+    initAudio();
+    if(audioCtx.state==='suspended')audioCtx.resume();
+  } else {
+    stopDrone();
+  }
+}
+
+// ── TONE UTILITIES ──
+function playTone(freq,type,duration,vol,fadeIn,fadeOut){
+  if(!soundOn||!audioCtx)return null;
+  var osc=audioCtx.createOscillator();
+  var gain=audioCtx.createGain();
+  osc.connect(gain);gain.connect(audioCtx.destination);
+  osc.type=type||'sine';osc.frequency.value=freq;
+  var now=audioCtx.currentTime;
+  gain.gain.setValueAtTime(0,now);
+  gain.gain.linearRampToValueAtTime(vol||0.08,now+(fadeIn||0.05));
+  gain.gain.linearRampToValueAtTime(0,now+(duration||0.3)-(fadeOut||0.05));
+  osc.start(now);osc.stop(now+(duration||0.3));
+  return osc;
+}
+
+function playNoise(duration,vol,type){
+  if(!soundOn||!audioCtx)return;
+  var bufSize=audioCtx.sampleRate*duration;
+  var buf=audioCtx.createBuffer(1,bufSize,audioCtx.sampleRate);
+  var data=buf.getChannelData(0);
+  // Pink noise
+  var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+  for(var i=0;i<bufSize;i++){
+    var w=Math.random()*2-1;
+    b0=0.99886*b0+w*0.0555179;b1=0.99332*b1+w*0.0750759;
+    b2=0.96900*b2+w*0.1538520;b3=0.86650*b3+w*0.3104856;
+    b4=0.55000*b4+w*0.5329522;b5=-0.7616*b5-w*0.0168980;
+    data[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;b6=w*0.115926;
+  }
+  var src=audioCtx.createBufferSource();src.buffer=buf;
+  var gain=audioCtx.createGain();
+  src.connect(gain);gain.connect(audioCtx.destination);
+  var now=audioCtx.currentTime;
+  var v=vol||0.06;
+  if(type==='in'){
+    gain.gain.setValueAtTime(0,now);
+    gain.gain.linearRampToValueAtTime(v,now+duration*.3);
+    gain.gain.linearRampToValueAtTime(0,now+duration);
+  } else {
+    gain.gain.setValueAtTime(v,now);
+    gain.gain.linearRampToValueAtTime(0,now+duration);
+  }
+  src.start(now);src.stop(now+duration);
+}
+
+function startDrone(freq,vol,wobble){
+  stopDrone();
+  if(!soundOn||!audioCtx)return;
+  currentDrone=audioCtx.createOscillator();
+  droneGain=audioCtx.createGain();
+  var filter=audioCtx.createBiquadFilter();
+  filter.type='lowpass';filter.frequency.value=800;
+  currentDrone.connect(filter);filter.connect(droneGain);droneGain.connect(audioCtx.destination);
+  currentDrone.type='sine';
+  currentDrone.frequency.value=freq||110;
+  if(wobble){currentDrone.frequency.setValueAtTime(freq,audioCtx.currentTime);currentDrone.frequency.linearRampToValueAtTime(freq*(1+wobble),audioCtx.currentTime+2);currentDrone.frequency.linearRampToValueAtTime(freq,audioCtx.currentTime+4);}
+  var now=audioCtx.currentTime;
+  droneGain.gain.setValueAtTime(0,now);
+  droneGain.gain.linearRampToValueAtTime(vol||0.06,now+1.5);
+  currentDrone.start(now);
+}
+
+function stopDrone(){
+  if(currentDrone){
+    try{
+      var now=audioCtx?audioCtx.currentTime:0;
+      if(droneGain){droneGain.gain.linearRampToValueAtTime(0,now+1);currentDrone.stop(now+1.2);}
+      else currentDrone.stop();
+    }catch(e){}
+    currentDrone=null;droneGain=null;
+  }
+}
+
+function modulateDrone(freq,duration){
+  if(!currentDrone||!audioCtx||!droneGain)return;
+  var now=audioCtx.currentTime;
+  currentDrone.frequency.linearRampToValueAtTime(freq,now+(duration||2));
+}
+
+// ── INTRO WIND SOUND ──
+function playIntroWind(phase){
+  if(!soundOn||!audioCtx)return;
+  playNoise(1.8,phase==='in'?0.055:0.045,phase==='in'?'in':'out');
+  // Subtle tone underneath
+  playTone(phase==='in'?220:196,'sine',1.8,0.03,0.3,0.4);
+}
+
+// ── PHASE SOUNDS ──
+var PHASE_FREQS={in:330,out:220,hold:275,hold2:275,in2:392,pump:440,release:330};
+function playPhaseSound(phaseType,patternKey){
+  if(!soundOn||!audioCtx)return;
+  if(patternKey==='anapana')return; // drone only
+  if(patternKey==='fire'){
+    // Rapid pulsing — very short
+    playTone(PHASE_FREQS[phaseType]||330,'sine',0.08,0.04,0.01,0.02);
+    return;
+  }
+  if(patternKey==='coherent'){
+    modulateDrone(phaseType==='in'?140:100,5.5);
+    return;
+  }
+  // Soft chime for others
+  var freq=PHASE_FREQS[phaseType]||280;
+  playTone(freq,'sine',0.6,0.07,0.02,0.35);
+  // Harmonic
+  playTone(freq*2,'sine',0.4,0.025,0.02,0.25);
+}
+
+// ── PATTERN DRONES ──
+var DRONES={
+  anapana:{freq:110,vol:0.045,wobble:0.02},
+  coherent:{freq:120,vol:0.05,wobble:0},
+  extended:{freq:98,vol:0.04,wobble:0.015},
+  physiological:{freq:130,vol:0.04},
+  '478':{freq:105,vol:0.04},
+  box:{freq:117,vol:0.04},
+  fire:null,
+  '221':{freq:125,vol:0.04}
+};
+
+function startPatternAudio(key){
+  if(!soundOn||!audioCtx)return;
+  var d=DRONES[key];
+  if(d)startDrone(d.freq,d.vol,d.wobble||0);
+}
 
 // ── LANGUAGE ──
 var lang='en';
